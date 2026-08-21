@@ -34,7 +34,6 @@ jobs:
           cp TempScaffold/metro.config.js metro.config.js
           cp TempScaffold/babel.config.js babel.config.js
           cp TempScaffold/.watchmanconfig .watchmanconfig 2>/dev/null || true
-          # Fix package name in scaffolded android files
           find android -type f \( -name "*.java" -o -name "*.kt" -o -name "*.gradle" -o -name "*.xml" -o -name "*.properties" \) -exec sed -i 's/com\.tempscaffold/com.pocketledger/g' {} +
           mkdir -p android/app/src/main/java/com/pocketledger
           if [ -d "android/app/src/main/java/com/tempscaffold" ]; then
@@ -42,12 +41,11 @@ jobs:
             rm -rf android/app/src/main/java/com/tempscaffold
           fi
           rm -rf TempScaffold
-          echo 'module.exports = { project: { android: { sourceDir: "./android", appName: "app", packageName: "com.pocketledger" } } };' > react-native.config.js
+
+      - name: Create react-native.config.js
+        run: node -e "const fs=require('fs');fs.writeFileSync('react-native.config.js',JSON.stringify({project:{android:{sourceDir:'./android',appName:'app',packageName:'com.pocketledger'}}},null,2))"
 
       - run: npm install
-
-      - name: Debug react-native config
-        run: npx react-native config 2>&1 | head -30
 
       - name: Build Debug APK
         run: |
