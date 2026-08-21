@@ -34,7 +34,7 @@ jobs:
           cp TempScaffold/metro.config.js metro.config.js
           cp TempScaffold/babel.config.js babel.config.js
           cp TempScaffold/.watchmanconfig .watchmanconfig 2>/dev/null || true
-          find android -type f \( -name "*.java" -o -name "*.kt" -o -name "*.gradle" -o -name "*.xml" -o -name "*.properties" \) -exec sed -i 's/com\.tempscaffold/com.pocketledger/g' {} +
+          find android -type f \( -name "*.java" -o -name "*.kt" -o -name "*.gradle" -o -name "*.xml" -o -name "*.properties" \) -exec sed -i 's/com\.tempscaffold/com.pocketledger/g; s/TempScaffold/PocketLedger/g' {} +
           mkdir -p android/app/src/main/java/com/pocketledger
           if [ -d "android/app/src/main/java/com/tempscaffold" ]; then
             cp -r android/app/src/main/java/com/tempscaffold/* android/app/src/main/java/com/pocketledger/
