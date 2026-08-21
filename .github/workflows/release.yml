@@ -29,14 +29,19 @@ jobs:
       - name: Create RN project and overlay source
         run: |
           npx --yes @react-native-community/cli@15 init PocketLedgerTemp --version 0.76.9 --skip-install
-          cp -r PocketLedgerTemp/android/* android/
-          cp PocketLedgerTemp/babel.config.js babel.config.js.tmp
+          rm -rf android
+          cp -r PocketLedgerTemp/android android
           rm -rf PocketLedgerTemp
+          # Rename package from PocketLedgerTemp to PocketLedger
+          find android -type f -name "*.java" -o -name "*.kt" -o -name "*.gradle" -o -name "*.xml" -o -name "*.properties" | xargs sed -i 's/PocketLedgerTemp/PocketLedger/g'
+          find android -type f -name "*.java" -o -name "*.kt" | xargs sed -i 's/com\.pocketledgertemp/com.pocketledger/g'
+          mkdir -p android/app/src/main/java/com/pocketledger
+          if [ -d "android/app/src/main/java/com/pocketledgertemp" ]; then
+            cp -r android/app/src/main/java/com/pocketledgertemp/* android/app/src/main/java/com/pocketledger/
+            rm -rf android/app/src/main/java/com/pocketledgertemp
+          fi
 
       - run: npm install
-
-      - name: Generate debug keystore
-        run: keytool -genkeypair -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Decode keystore
         if: env.ANDROID_KEYSTORE_BASE64 != ''
