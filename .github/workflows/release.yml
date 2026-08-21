@@ -42,9 +42,6 @@ jobs:
           fi
           rm -rf TempScaffold
 
-      - name: Create react-native.config.js
-        run: node -e "const fs=require('fs');fs.writeFileSync('react-native.config.js',JSON.stringify({project:{android:{sourceDir:'./android',appName:'app',packageName:'com.pocketledger'}}},null,2))"
-
       - run: npm install
 
       - name: Build Debug APK
