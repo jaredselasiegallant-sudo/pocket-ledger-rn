@@ -14,7 +14,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - uses: actions/setup-java@v4
         with:
@@ -23,12 +22,21 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      - run: npm ci
+      - run: npm install
 
       - name: Decode keystore
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      - name: Build APK
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Build Release APK
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
           cd android
           ./gradlew assembleRelease
@@ -37,72 +45,31 @@ jobs:
           MYAPP_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           MYAPP_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
-      - name: Build AAB
-        run: |
-          cd android
-          ./gradlew bundleRelease
-        env:
-          MYAPP_RELEASE_STORE_FILE: release.keystore
-          MYAPP_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-          MYAPP_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          MYAPP_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: android-builds
           path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
             android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/bundle/release/app-release.aab
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - run: npm ci
-
-      - name: Install Windows dependencies
-        run: npx react-native-windows-override
-
-      - name: Build Windows
-        run: |
-          cd windows
-          npx msbuild PocketLedger.sln /p:Configuration=Release /p:Platform=x64
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-build
-          path: windows/x64/Release/AppX/
 
   release:
-    needs: [build-android, build-windows]
+    needs: [build-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Package Windows
+      - name: Rename files
         run: |
-          cd artifacts/windows-build
-          7z a -tzip ../../PocketLedger-Windows.zip .
-
-      - name: Rename Android files
-        run: |
-          find artifacts/android-builds -name "*.apk" -exec mv {} artifacts/PocketLedger.apk \;
-          find artifacts/android-builds -name "*.aab" -exec mv {} artifacts/PocketLedger.aab \;
+          mkdir -p release
+          find artifacts/android-builds -name "*.apk" -exec cp {} release/PocketLedger.apk \;
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -113,12 +80,10 @@ jobs:
             ## PocketLedger React Native ${{ github.ref_name }}
 
             Offline-first personal finance tracker built with React Native.
-            Ghana Cedi (GHS) as default currency. Targets Android & Windows.
+            Ghana Cedi (GHS) as default currency. Android build.
 
             ### Downloads
             - **Android APK** — `PocketLedger.apk` — Install directly on Android
-            - **Android AAB** — `PocketLedger.aab` — Upload to Google Play Console
-            - **Windows** — `PocketLedger-Windows.zip` — Extract and run
 
             ### Features
             - Dashboard with real-time balance, income/expenses
@@ -133,6 +98,4 @@ jobs:
             ### Tech Stack
             React Native 0.76 | Redux Toolkit | NativeWind | React Navigation v7 | TypeScript
           files: |
-            artifacts/PocketLedger.apk
-            artifacts/PocketLedger.aab
-            PocketLedger-Windows.zip
+            release/PocketLedger.apk
