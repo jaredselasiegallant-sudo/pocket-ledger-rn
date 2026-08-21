@@ -39,13 +39,14 @@ jobs:
 
       - name: Generate autolinking config
         run: |
+          rm -rf android/build android/app/build
           mkdir -p android/build/generated/autolinking
           npx react-native config > android/build/generated/autolinking/autolinking.json
 
       - name: Build Debug APK
         run: |
           cd android
-          gradle assembleDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m"
+          gradle clean assembleDebug --no-daemon
         env:
           GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
