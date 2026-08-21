@@ -22,6 +22,8 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      - uses: gradle/actions/setup-gradle@v4
+
       - run: npm install
 
       - name: Decode keystore
@@ -29,6 +31,12 @@ jobs:
         run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Generate Gradle Wrapper
+        run: |
+          cd android
+          gradle wrapper --gradle-version 8.10.2
+          chmod +x gradlew
 
       - name: Build Debug APK
         run: |
