@@ -26,7 +26,17 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
+      - name: Create RN project and overlay source
+        run: |
+          npx --yes @react-native-community/cli@15 init PocketLedgerTemp --version 0.76.9 --skip-install
+          cp -r PocketLedgerTemp/android/* android/
+          cp PocketLedgerTemp/babel.config.js babel.config.js.tmp
+          rm -rf PocketLedgerTemp
+
       - run: npm install
+
+      - name: Generate debug keystore
+        run: keytool -genkeypair -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Decode keystore
         if: env.ANDROID_KEYSTORE_BASE64 != ''
@@ -34,19 +44,10 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      - name: Generate debug keystore
-        run: keytool -genkeypair -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-
-      - name: Generate autolinking config
-        run: |
-          rm -rf android/build android/app/build
-          mkdir -p android/build/generated/autolinking
-          npx react-native config > android/build/generated/autolinking/autolinking.json
-
       - name: Build Debug APK
         run: |
           cd android
-          gradle clean assembleDebug --no-daemon
+          ./gradlew assembleDebug
         env:
           GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
@@ -54,7 +55,7 @@ jobs:
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
           cd android
-          gradle assembleRelease --no-daemon
+          ./gradlew assembleRelease
         env:
           MYAPP_RELEASE_STORE_FILE: release.keystore
           MYAPP_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -108,9 +109,9 @@ jobs:
             - Reports with charts (category, monthly trend, balance)
             - Quick Expense for rapid entry
             - Dark mode support
-            - Offline-first — all data on device via MMKV
+            - Offline-first — all data on device via AsyncStorage
 
             ### Tech Stack
-            React Native 0.76 | Redux Toolkit | NativeWind | React Navigation v7 | TypeScript
+            React Native 0.76 | Redux Toolkit | React Navigation v7 | TypeScript
           files: |
             release/PocketLedger.apk
