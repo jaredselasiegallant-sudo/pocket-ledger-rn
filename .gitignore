@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# React Native
+.metro-health-check*
+*.hprof
+
+# iOS
+ios/Pods/
+ios/build/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+
+# Android
+android/app/build/
+android/build/
+android/.gradle/
+*.apk
+*.aab
+
+# Windows
+windows/x64/
+windows/packages/
+
+# Build
+dist/
+build/
+out/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NativeWind
+.nativewind/
