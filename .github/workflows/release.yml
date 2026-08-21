@@ -1,0 +1,138 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+
+      - name: Decode keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+
+      - name: Build APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+        env:
+          MYAPP_RELEASE_STORE_FILE: release.keystore
+          MYAPP_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          MYAPP_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          MYAPP_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Build AAB
+        run: |
+          cd android
+          ./gradlew bundleRelease
+        env:
+          MYAPP_RELEASE_STORE_FILE: release.keystore
+          MYAPP_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          MYAPP_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          MYAPP_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-builds
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: npm ci
+
+      - name: Install Windows dependencies
+        run: npx react-native-windows-override
+
+      - name: Build Windows
+        run: |
+          cd windows
+          npx msbuild PocketLedger.sln /p:Configuration=Release /p:Platform=x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: windows/x64/Release/AppX/
+
+  release:
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Package Windows
+        run: |
+          cd artifacts/windows-build
+          7z a -tzip ../../PocketLedger-Windows.zip .
+
+      - name: Rename Android files
+        run: |
+          find artifacts/android-builds -name "*.apk" -exec mv {} artifacts/PocketLedger.apk \;
+          find artifacts/android-builds -name "*.aab" -exec mv {} artifacts/PocketLedger.aab \;
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "PocketLedger RN ${{ github.ref_name }}"
+          body: |
+            ## PocketLedger React Native ${{ github.ref_name }}
+
+            Offline-first personal finance tracker built with React Native.
+            Ghana Cedi (GHS) as default currency. Targets Android & Windows.
+
+            ### Downloads
+            - **Android APK** — `PocketLedger.apk` — Install directly on Android
+            - **Android AAB** — `PocketLedger.aab` — Upload to Google Play Console
+            - **Windows** — `PocketLedger-Windows.zip` — Extract and run
+
+            ### Features
+            - Dashboard with real-time balance, income/expenses
+            - Transaction list with period/type filters and search
+            - Add expenses, income, transfers with categories and accounts
+            - Budget tracking with category progress bars
+            - Reports with charts (category, monthly trend, balance)
+            - Quick Expense for rapid entry
+            - Dark mode support
+            - Offline-first — all data on device via MMKV
+
+            ### Tech Stack
+            React Native 0.76 | Redux Toolkit | NativeWind | React Navigation v7 | TypeScript
+          files: |
+            artifacts/PocketLedger.apk
+            artifacts/PocketLedger.aab
+            PocketLedger-Windows.zip
