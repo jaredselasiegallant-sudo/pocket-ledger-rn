@@ -1,6 +1,3 @@
 module.exports = {
-  presets: [
-    ['module:metro-react-native-babel-preset', { useTransformReactJSXExperimental: true }],
-    'nativewind/babel',
-  ],
+  presets: ['module:@react-native/babel-preset'],
 };
