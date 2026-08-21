@@ -26,28 +26,17 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Create RN project and overlay source
+      - name: Scaffold RN project and extract android/
         run: |
-          npx --yes @react-native-community/cli@15 init PocketLedgerTemp --version 0.76.9 --skip-install
+          npx --yes @react-native-community/cli@15 init TempScaffold --version 0.76.9 --skip-install
           rm -rf android
-          cp -r PocketLedgerTemp/android android
-          rm -rf PocketLedgerTemp
-          # Rename package from PocketLedgerTemp to PocketLedger
-          find android -type f -name "*.java" -o -name "*.kt" -o -name "*.gradle" -o -name "*.xml" -o -name "*.properties" | xargs sed -i 's/PocketLedgerTemp/PocketLedger/g'
-          find android -type f -name "*.java" -o -name "*.kt" | xargs sed -i 's/com\.pocketledgertemp/com.pocketledger/g'
-          mkdir -p android/app/src/main/java/com/pocketledger
-          if [ -d "android/app/src/main/java/com/pocketledgertemp" ]; then
-            cp -r android/app/src/main/java/com/pocketledgertemp/* android/app/src/main/java/com/pocketledger/
-            rm -rf android/app/src/main/java/com/pocketledgertemp
-          fi
+          mv TempScaffold/android android
+          cp TempScaffold/metro.config.js metro.config.js
+          cp TempScaffold/babel.config.js babel.config.js
+          cp TempScaffold/.watchmanconfig .watchmanconfig 2>/dev/null || true
+          rm -rf TempScaffold
 
       - run: npm install
-
-      - name: Decode keystore
-        if: env.ANDROID_KEYSTORE_BASE64 != ''
-        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       - name: Build Debug APK
         run: |
@@ -59,14 +48,16 @@ jobs:
       - name: Build Release APK
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
-          cd android
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > app/release.keystore
           ./gradlew assembleRelease
+        working-directory: android
         env:
           MYAPP_RELEASE_STORE_FILE: release.keystore
           MYAPP_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           MYAPP_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -111,7 +102,7 @@ jobs:
             - Transaction list with period/type filters and search
             - Add expenses, income, transfers with categories and accounts
             - Budget tracking with category progress bars
-            - Reports with charts (category, monthly trend, balance)
+            - Reports with charts
             - Quick Expense for rapid entry
             - Dark mode support
             - Offline-first — all data on device via AsyncStorage

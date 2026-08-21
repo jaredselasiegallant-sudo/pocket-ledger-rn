@@ -1,5 +1,0 @@
-<resources>
-    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <item name="android:statusBarColor">#F8FAF5</item>
-    </style>
-</resources>

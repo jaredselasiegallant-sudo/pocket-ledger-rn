@@ -11,12 +11,8 @@ ios/build/
 ios/*.xcworkspace/xcuserdata/
 ios/*.xcodeproj/xcuserdata/
 
-# Android
-android/app/build/
-android/build/
-android/.gradle/
-*.apk
-*.aab
+# Android (generated in CI, not checked in)
+android/
 
 # Windows
 windows/x64/
