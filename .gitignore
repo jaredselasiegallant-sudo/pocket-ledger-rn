@@ -39,5 +39,3 @@ out/
 .DS_Store
 Thumbs.db
 
-# NativeWind
-.nativewind/

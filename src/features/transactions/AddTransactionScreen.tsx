@@ -1,28 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert,
+  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, StatusBar,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addTransactionAsync } from './transactionsSlice';
-import { formatGhs } from '../../utils/currency';
 import { DEFAULT_CATEGORIES } from '../../utils/constants';
 import { TransactionType } from '../../models/types';
+import { colors, typography, shadows, radii } from '../../theme';
 
 const TYPES: { label: string; value: TransactionType; color: string }[] = [
-  { label: 'Expense', value: 'debit', color: '#DE350B' },
-  { label: 'Income', value: 'credit', color: '#00875A' },
-  { label: 'Transfer', value: 'transfer', color: '#0065FF' },
+  { label: 'Expense', value: 'debit', color: colors.expense },
+  { label: 'Income', value: 'credit', color: colors.income },
+  { label: 'Transfer', value: 'transfer', color: colors.info },
 ];
 
-export default function AddTransactionScreen({ navigation }: any) {
+export default function AddTransactionScreen({ navigation, route }: any) {
   const dispatch = useAppDispatch();
   const accounts = useAppSelector((s) => s.accounts.items);
 
-  const [typeIndex, setTypeIndex] = useState(0);
+  const initialType = route?.params?.initialType;
+  const initialIdx = TYPES.findIndex((t) => t.value === initialType);
+
+  const [typeIndex, setTypeIndex] = useState(initialIdx !== -1 ? initialIdx : 0);
   const [amount, setAmount] = useState('');
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
-  const [category, setCategory] = useState('Food & Dining');
+  const [category, setCategory] = useState(route?.params?.initialCategory || 'Food & Dining');
   const [account, setAccount] = useState('MTN MoMo');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -58,7 +62,7 @@ export default function AddTransactionScreen({ navigation }: any) {
       ).unwrap();
 
       navigation.goBack();
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Failed to save transaction');
     } finally {
       setIsSaving(false);
@@ -67,10 +71,12 @@ export default function AddTransactionScreen({ navigation }: any) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Close + Title */}
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
+      {/* Close Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.closeBtn}>✕</Text>
+        <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
+          <Icon name="close" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Transaction</Text>
         <TouchableOpacity onPress={handleSave} disabled={isSaving}>
@@ -78,16 +84,17 @@ export default function AddTransactionScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      {/* Amount Input */}
+      {/* Amount Display Input Box */}
       <View style={styles.amountBox}>
         <Text style={styles.currency}>GH₵</Text>
         <TextInput
           style={styles.amountInput}
           placeholder="0.00"
-          placeholderTextColor="rgba(26,28,25,0.3)"
+          placeholderTextColor={colors.textMuted}
           value={amount}
           onChangeText={setAmount}
           keyboardType="decimal-pad"
+          autoFocus
         />
       </View>
 
@@ -99,7 +106,7 @@ export default function AddTransactionScreen({ navigation }: any) {
             style={[styles.typeTab, typeIndex === i && { backgroundColor: t.color }]}
             onPress={() => setTypeIndex(i)}
           >
-            <Text style={[styles.typeTabText, typeIndex === i && { color: '#fff' }]}>
+            <Text style={[styles.typeTabText, typeIndex === i && { color: colors.textOnPrimary }]}>
               {t.label}
             </Text>
           </TouchableOpacity>
@@ -107,11 +114,11 @@ export default function AddTransactionScreen({ navigation }: any) {
       </View>
 
       {/* Title */}
-      <Text style={styles.label}>Title</Text>
+      <Text style={styles.label}>Title / Description</Text>
       <TextInput
         style={styles.input}
-        placeholder="What was this for?"
-        placeholderTextColor="#717971"
+        placeholder="e.g. Lunch at Chop Bar, Uber ride..."
+        placeholderTextColor={colors.textMuted}
         value={title}
         onChangeText={setTitle}
       />
@@ -135,7 +142,7 @@ export default function AddTransactionScreen({ navigation }: any) {
       </View>
 
       {/* Account */}
-      <Text style={styles.label}>Account</Text>
+      <Text style={styles.label}>Payment Account</Text>
       <View style={styles.accountRow}>
         {accountNames.map((name) => (
           <TouchableOpacity
@@ -153,11 +160,11 @@ export default function AddTransactionScreen({ navigation }: any) {
       </View>
 
       {/* Notes */}
-      <Text style={styles.label}>Notes</Text>
+      <Text style={styles.label}>Additional Notes (Optional)</Text>
       <TextInput
         style={[styles.input, styles.notesInput]}
-        placeholder="Add notes..."
-        placeholderTextColor="#717971"
+        placeholder="Reference code or details..."
+        placeholderTextColor={colors.textMuted}
         value={notes}
         onChangeText={setNotes}
         multiline
@@ -185,95 +192,166 @@ export default function AddTransactionScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAF5' },
-  content: { padding: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    padding: 20,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 40,
+    paddingTop: 30,
     paddingBottom: 16,
   },
-  closeBtn: { fontSize: 24, color: '#717971', padding: 8 },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: '#1A1C19' },
-  saveBtn: { fontSize: 15, fontWeight: '600', color: '#006B3F', padding: 8 },
+  closeBtn: {
+    padding: 6,
+  },
+  headerTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  saveBtn: {
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary,
+    padding: 6,
+  },
   amountBox: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: '#E2E6DE',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
-  currency: { fontSize: 28, fontWeight: '800', color: '#006B3F', marginRight: 8 },
+  currency: {
+    fontSize: typography.fontSize.xxl,
+    fontWeight: typography.fontWeight.heavy,
+    color: colors.primary,
+    marginRight: 10,
+  },
   amountInput: {
     flex: 1,
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#1A1C19',
+    fontSize: typography.fontSize.display,
+    fontWeight: typography.fontWeight.heavy,
+    color: colors.textPrimary,
     padding: 0,
   },
   typeTabs: {
     flexDirection: 'row',
-    backgroundColor: '#E2E6DE',
-    borderRadius: 16,
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: radii.lg,
     padding: 4,
-    marginBottom: 24,
+    marginBottom: 20,
     gap: 4,
   },
   typeTab: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: radii.md,
     alignItems: 'center',
   },
-  typeTabText: { fontSize: 14, fontWeight: '600', color: '#717971' },
+  typeTabText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textSecondary,
+  },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#717971',
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textSecondary,
     marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: '#E2E6DE',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 16,
-    color: '#1A1C19',
-    marginBottom: 16,
+    fontSize: typography.fontSize.md,
+    color: colors.textPrimary,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
-  notesInput: { height: 80, textAlignVertical: 'top' },
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  notesInput: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 18,
+  },
   categoryChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#ECF0E8',
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(193,201,191,0.3)',
+    borderColor: colors.cardBorder,
   },
-  categoryChipActive: { backgroundColor: '#A4F5BA', borderColor: '#006B3F', borderWidth: 2 },
-  categoryChipText: { fontSize: 13, fontWeight: '500', color: '#717971' },
-  categoryChipTextActive: { color: '#006B3F', fontWeight: '700' },
-  accountRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  categoryChipActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  categoryChipText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textSecondary,
+  },
+  categoryChipTextActive: {
+    color: colors.primary,
+    fontWeight: typography.fontWeight.bold,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 18,
+  },
   accountChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#ECF0E8',
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(193,201,191,0.3)',
+    borderColor: colors.cardBorder,
   },
-  accountChipActive: { backgroundColor: '#A4F5BA', borderColor: '#006B3F', borderWidth: 2 },
-  accountChipText: { fontSize: 13, fontWeight: '500', color: '#717971' },
-  accountChipTextActive: { color: '#006B3F', fontWeight: '700' },
+  accountChipActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  accountChipText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textSecondary,
+  },
+  accountChipTextActive: {
+    color: colors.primary,
+    fontWeight: typography.fontWeight.bold,
+  },
   saveButton: {
-    height: 56,
-    borderRadius: 16,
+    height: 54,
+    borderRadius: radii.lg,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
+    ...shadows.md,
   },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  saveButtonText: {
+    color: colors.textOnPrimary,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+  },
 });

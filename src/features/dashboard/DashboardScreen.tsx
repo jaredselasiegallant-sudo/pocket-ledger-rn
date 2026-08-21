@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { loadTransactionsAsync } from '../transactions/transactionsSlice';
 import { loadAccountsAsync } from './accountsSlice';
 import { loadBudgetsAsync } from '../budget/budgetSlice';
-import { formatGhs, formatCompact } from '../../utils/currency';
-import { getDateLabel } from '../../utils/helpers';
-import { Transaction } from '../../models/types';
+import HeaderCard from '../../components/HeaderCard';
+import QuickActionButton from '../../components/QuickActionButton';
+import TransactionTile from '../../components/TransactionTile';
+import { colors, typography, shadows, radii } from '../../theme';
 
 export default function DashboardScreen({ navigation }: any) {
   const dispatch = useAppDispatch();
@@ -41,60 +43,66 @@ export default function DashboardScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      
+      {/* Top Header Title */}
+      <View style={styles.topBar}>
+        <View>
+          <Text style={styles.greetingText}>Akwaaba 👋</Text>
+          <Text style={styles.appTitle}>Pocket Ledger</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.notificationBtn}
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Icon name="cog-outline" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Balance Header */}
-        <View style={styles.balanceHeader}>
-          <Text style={styles.balanceLabel}>Total Balance</Text>
-          <Text style={styles.balanceAmount}>{formatGhs(totalBalance)}</Text>
-
-          <View style={styles.balanceRow}>
-            <View style={styles.balanceChip}>
-              <View style={[styles.chipIcon, { backgroundColor: 'rgba(0,135,90,0.2)' }]}>
-                <Text style={styles.chipIconText}>↓</Text>
-              </View>
-              <View style={styles.chipTextWrap}>
-                <Text style={styles.chipLabel}>Income</Text>
-                <Text style={styles.chipAmount}>{formatCompact(income)}</Text>
-              </View>
-            </View>
-            <View style={styles.balanceChip}>
-              <View style={[styles.chipIcon, { backgroundColor: 'rgba(222,53,11,0.2)' }]}>
-                <Text style={styles.chipIconText}>↑</Text>
-              </View>
-              <View style={styles.chipTextWrap}>
-                <Text style={styles.chipLabel}>Expenses</Text>
-                <Text style={styles.chipAmount}>{formatCompact(expenses)}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+        {/* Total Balance Card */}
+        <HeaderCard
+          totalBalance={totalBalance}
+          income={income}
+          expenses={expenses}
+        />
 
         {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          {[
-            { icon: '↗', label: 'Send', color: '#DE350B' },
-            { icon: '↙', label: 'Receive', color: '#00875A' },
-            { icon: '↔', label: 'Transfer', color: '#0065FF' },
-            { icon: '📄', label: 'Pay Bill', color: '#FF991F' },
-          ].map((action) => (
-            <TouchableOpacity
-              key={action.label}
-              style={styles.quickActionBtn}
-              onPress={() => navigation.navigate('Transactions', { screen: 'AddTransaction' })}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: '#E2E6DE' }]}>
-                <Text style={{ fontSize: 20 }}>{action.icon}</Text>
-              </View>
-              <Text style={styles.quickActionLabel}>{action.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.quickActionsCard}>
+          <QuickActionButton
+            icon="arrow-top-right"
+            label="Send"
+            badgeColor={colors.expenseSoft}
+            iconColor={colors.expense}
+            onPress={() => navigation.navigate('AddTransaction', { initialType: 'debit' })}
+          />
+          <QuickActionButton
+            icon="arrow-bottom-left"
+            label="Receive"
+            badgeColor={colors.incomeSoft}
+            iconColor={colors.income}
+            onPress={() => navigation.navigate('AddTransaction', { initialType: 'credit' })}
+          />
+          <QuickActionButton
+            icon="swap-horizontal"
+            label="Transfer"
+            badgeColor={colors.infoSoft}
+            iconColor={colors.info}
+            onPress={() => navigation.navigate('AddTransaction', { initialType: 'transfer' })}
+          />
+          <QuickActionButton
+            icon="file-document-outline"
+            label="Pay Bill"
+            badgeColor={colors.warningSoft}
+            iconColor={colors.warning}
+            onPress={() => navigation.navigate('AddTransaction', { initialType: 'debit', initialCategory: 'Utilities' })}
+          />
         </View>
 
-        {/* Recent Transactions */}
+        {/* Recent Transactions Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
           {transactions.length > 0 && (
@@ -106,152 +114,151 @@ export default function DashboardScreen({ navigation }: any) {
 
         {recentTxns.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyTitle}>No transactions yet</Text>
-            <Text style={styles.emptySubtitle}>Tap + to add your first transaction</Text>
+            <View style={styles.emptyIconBg}>
+              <Icon name="receipt-outline" size={32} color={colors.textMuted} />
+            </View>
+            <Text style={styles.emptyTitle}>No transactions recorded</Text>
+            <Text style={styles.emptySubtitle}>Tap the button below to add your first entry</Text>
           </View>
         ) : (
           recentTxns.map((txn) => (
-            <TransactionTile key={txn.id} transaction={txn} />
+            <TransactionTile
+              key={txn.id}
+              transaction={txn}
+              onPress={() => navigation.navigate('Transactions')}
+            />
           ))
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 90 }} />
       </ScrollView>
 
-      {/* FAB */}
+      {/* Floating Action Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('Transactions', { screen: 'AddTransaction' })}
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('AddTransaction')}
       >
-        <Text style={styles.fabText}>+ Add Transaction</Text>
+        <Icon name="plus" size={20} color={colors.textOnPrimary} />
+        <Text style={styles.fabText}>Add Transaction</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-function TransactionTile({ transaction }: { transaction: Transaction }) {
-  const isCredit = transaction.type === 'credit';
-  const color = isCredit ? '#00875A' : '#DE350B';
-
-  return (
-    <View style={styles.txnTile}>
-      <View style={[styles.txnIcon, { backgroundColor: `${color}15` }]}>
-        <Text style={{ color, fontSize: 18 }}>{isCredit ? '↓' : '↑'}</Text>
-      </View>
-      <View style={styles.txnInfo}>
-        <Text style={styles.txnTitle}>{transaction.title}</Text>
-        <Text style={styles.txnCategory}>{transaction.category || 'Other'}</Text>
-      </View>
-      <View style={styles.txnRight}>
-        <Text style={[styles.txnAmount, { color }]}>
-          {isCredit ? '+' : '-'}{formatGhs(transaction.amount)}
-        </Text>
-        <Text style={styles.txnDate}>{getDateLabel(transaction.transactionDate)}</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAF5' },
-  scrollContent: { paddingTop: 20 },
-  balanceHeader: {
-    marginHorizontal: 16,
-    padding: 24,
-    backgroundColor: '#006B3F',
-    borderRadius: 24,
-    shadowColor: '#006B3F',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  balanceLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '500' },
-  balanceAmount: { color: '#fff', fontSize: 36, fontWeight: '800', marginTop: 4, letterSpacing: -1 },
-  balanceRow: { flexDirection: 'row', marginTop: 20, gap: 12 },
-  balanceChip: {
+  container: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 12,
-    padding: 10,
-    gap: 8,
+    backgroundColor: colors.background,
   },
-  chipIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 12,
+  },
+  greetingText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  appTitle: {
+    fontSize: typography.fontSize.xxl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  notificationBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
-  chipIconText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  chipTextWrap: { flex: 1 },
-  chipLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '500' },
-  chipAmount: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  quickActions: {
+  scrollContent: {
+    paddingTop: 8,
+  },
+  quickActionsCard: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 8,
+    backgroundColor: colors.surface,
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
   },
-  quickActionBtn: { flex: 1, alignItems: 'center', gap: 6 },
-  quickActionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: { fontSize: 11, fontWeight: '600', color: '#717971' },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#1A1C19' },
-  seeAll: { fontSize: 14, fontWeight: '600', color: '#006B3F' },
-  emptyState: { alignItems: 'center', paddingVertical: 48 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: '#717971' },
-  emptySubtitle: { fontSize: 14, color: 'rgba(113,121,113,0.6)', marginTop: 4 },
-  txnTile: {
-    flexDirection: 'row',
+  sectionTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  seeAll: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary,
+  },
+  emptyState: {
     alignItems: 'center',
+    backgroundColor: colors.surface,
+    marginHorizontal: 16,
+    borderRadius: radii.xl,
+    paddingVertical: 36,
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
-  txnIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  emptyIconBg: {
+    width: 60,
+    height: 60,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
-  txnInfo: { flex: 1 },
-  txnTitle: { fontSize: 16, fontWeight: '600', color: '#1A1C19' },
-  txnCategory: { fontSize: 13, color: '#717971', marginTop: 2 },
-  txnRight: { alignItems: 'flex-end' },
-  txnAmount: { fontSize: 15, fontWeight: '600' },
-  txnDate: { fontSize: 11, color: '#717971', marginTop: 2 },
+  emptyTitle: {
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  emptySubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    marginTop: 4,
+    textAlign: 'center',
+  },
   fab: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 20,
     right: 20,
-    backgroundColor: '#006B3F',
-    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
     paddingVertical: 14,
-    borderRadius: 16,
-    shadowColor: '#006B3F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    borderRadius: radii.full,
+    ...shadows.lg,
   },
-  fabText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  fabText: {
+    color: colors.textOnPrimary,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+  },
 });

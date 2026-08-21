@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert, StatusBar } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { addTransactionAsync } from '../transactions/transactionsSlice';
+import { addTransactionAsync, loadTransactionsAsync } from '../transactions/transactionsSlice';
+import { loadBudgetsAsync } from '../budget/budgetSlice';
 import { setThemeMode } from '../../app/appSlice';
 import { ThemeMode } from '../../models/types';
 import { formatGhs } from '../../utils/currency';
 import { DEFAULT_CATEGORIES } from '../../utils/constants';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { colors, typography, shadows, radii } from '../../theme';
 
 export default function SettingsScreen() {
   const dispatch = useAppDispatch();
@@ -40,7 +42,7 @@ export default function SettingsScreen() {
 
       setShowQuickExpense(false);
       setQuickAmount('');
-      Alert.alert('Done', `Quick expense of ${formatGhs(parsed)} recorded`);
+      Alert.alert('Success', `Quick expense of ${formatGhs(parsed)} recorded`);
     } catch {
       Alert.alert('Error', 'Failed to record expense');
     }
@@ -48,33 +50,41 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>Settings & Preferences</Text>
       </View>
 
-      {/* Quick Expense */}
-      <TouchableOpacity style={styles.menuCard} onPress={() => setShowQuickExpense(!showQuickExpense)}>
-        <View style={styles.menuIcon}>
-          <Icon name="flash" size={22} color="#FF991F" />
+      {/* Quick Expense Shortcut */}
+      <TouchableOpacity
+        style={styles.menuCard}
+        activeOpacity={0.8}
+        onPress={() => setShowQuickExpense(!showQuickExpense)}
+      >
+        <View style={[styles.menuIcon, { backgroundColor: colors.warningSoft }]}>
+          <Icon name="flash-outline" size={22} color={colors.warning} />
         </View>
         <View style={styles.menuInfo}>
-          <Text style={styles.menuTitle}>Quick Expense</Text>
-          <Text style={styles.menuSubtitle}>Log an expense in seconds</Text>
+          <Text style={styles.menuTitle}>Quick Expense Shortcut</Text>
+          <Text style={styles.menuSubtitle}>Log an expense in a few taps</Text>
         </View>
-        <Icon name="chevron-right" size={20} color="#717971" />
+        <Icon name={showQuickExpense ? 'chevron-up' : 'chevron-right'} size={22} color={colors.textMuted} />
       </TouchableOpacity>
 
       {showQuickExpense && (
         <View style={styles.quickExpenseForm}>
+          <Text style={styles.formLabel}>Amount (GH₵)</Text>
           <TextInput
             style={styles.input}
-            placeholder="Amount (GH₵)"
-            placeholderTextColor="#717971"
+            placeholder="0.00"
+            placeholderTextColor={colors.textMuted}
             value={quickAmount}
             onChangeText={setQuickAmount}
             keyboardType="decimal-pad"
             autoFocus
           />
+          <Text style={styles.formLabel}>Category</Text>
           <View style={styles.categoryRow}>
             {DEFAULT_CATEGORIES.slice(0, 6).map((cat) => (
               <TouchableOpacity
@@ -94,9 +104,9 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      {/* Theme */}
+      {/* Appearance Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Appearance</Text>
+        <Text style={styles.sectionTitle}>App Appearance</Text>
         <View style={styles.themeRow}>
           {(['light', 'dark', 'system'] as ThemeMode[]).map((mode) => (
             <TouchableOpacity
@@ -105,9 +115,9 @@ export default function SettingsScreen() {
               onPress={() => dispatch(setThemeMode(mode))}
             >
               <Icon
-                name={mode === 'light' ? 'weather-sunny' : mode === 'dark' ? 'weather-night' : 'cellphone'}
+                name={mode === 'light' ? 'weather-sunny' : mode === 'dark' ? 'weather-night' : 'cellphone-cog'}
                 size={18}
-                color={themeMode === mode ? '#fff' : '#717971'}
+                color={themeMode === mode ? colors.textOnPrimary : colors.textMuted}
               />
               <Text style={[styles.themeBtnText, themeMode === mode && styles.themeBtnTextActive]}>
                 {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -117,39 +127,88 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* Stats */}
+      {/* Financial Overview Stats */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Statistics</Text>
+        <Text style={styles.sectionTitle}>Ledger Overview</Text>
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{totalTransactions}</Text>
-            <Text style={styles.statLabel}>Total Transactions</Text>
+            <Text style={styles.statLabel}>Total Logs</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: '#00875A' }]}>{formatGhs(totalIncome)}</Text>
+            <Text style={[styles.statValue, { color: colors.income }]}>{formatGhs(totalIncome)}</Text>
             <Text style={styles.statLabel}>Total Income</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: '#DE350B' }]}>{formatGhs(totalExpenses)}</Text>
+            <Text style={[styles.statValue, { color: colors.expense }]}>{formatGhs(totalExpenses)}</Text>
             <Text style={styles.statLabel}>Total Expenses</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: '#006B3F' }]}>
+            <Text style={[styles.statValue, { color: colors.primary }]}>
               {formatGhs(totalIncome - totalExpenses)}
             </Text>
-            <Text style={styles.statLabel}>Net Savings</Text>
+            <Text style={styles.statLabel}>Net Balance</Text>
           </View>
         </View>
       </View>
 
-      {/* About */}
+      {/* Data Management */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Data Management</Text>
+        <TouchableOpacity
+          style={styles.clearDataCard}
+          activeOpacity={0.8}
+          onPress={() => {
+            Alert.alert(
+              'Reset Ledger Storage',
+              'This will erase all saved transactions and budget limits. Are you sure?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Reset Data',
+                  style: 'destructive',
+                  onPress: () => {
+                    try {
+                      const storage = new (require('react-native-mmkv').MMKV)();
+                      storage.clearAll();
+                      dispatch(loadTransactionsAsync());
+                      dispatch(loadBudgetsAsync());
+                      Alert.alert('Reset Complete', 'Local storage has been reset');
+                    } catch {
+                      Alert.alert('Error', 'Failed to clear storage');
+                    }
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: colors.expenseSoft }]}>
+            <Icon name="database-remove-outline" size={22} color={colors.expense} />
+          </View>
+          <View style={styles.menuInfo}>
+            <Text style={[styles.menuTitle, { color: colors.expense }]}>Clear Ledger Storage</Text>
+            <Text style={styles.menuSubtitle}>Reset all local transactions & budgets</Text>
+          </View>
+          <Icon name="chevron-right" size={22} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
+
+      {/* About & System Info */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.aboutCard}>
-          <Text style={styles.aboutApp}>PocketLedger</Text>
-          <Text style={styles.aboutVersion}>Version 1.0.0</Text>
+          <View style={styles.aboutHeader}>
+            <View style={styles.appIconBg}>
+              <Icon name="wallet" size={24} color={colors.primary} />
+            </View>
+            <View>
+              <Text style={styles.aboutApp}>Pocket Ledger</Text>
+              <Text style={styles.aboutVersion}>Version 1.0.0 (GHS Native)</Text>
+            </View>
+          </View>
           <Text style={styles.aboutDesc}>
-            Offline-first personal finance tracker with Ghana Cedi (GHS) as default currency.
+            Offline-first mobile financial manager optimized for Ghana (GH₵) with MMKV instant storage & local budgeting.
           </Text>
         </View>
       </View>
@@ -160,88 +219,221 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAF5' },
-  content: { padding: 16 },
-  header: { paddingHorizontal: 4, paddingTop: 60, paddingBottom: 16 },
-  headerTitle: { fontSize: 22, fontWeight: '600', color: '#1A1C19' },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    padding: 16,
+  },
+  header: {
+    paddingHorizontal: 4,
+    paddingTop: 50,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: typography.fontSize.xxl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
   menuCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
     padding: 16,
     gap: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  clearDataCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(222, 53, 11, 0.15)',
+    ...shadows.sm,
   },
   menuIcon: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FF991F12',
+    borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuInfo: { flex: 1 },
-  menuTitle: { fontSize: 16, fontWeight: '600', color: '#1A1C19' },
-  menuSubtitle: { fontSize: 13, color: '#717971', marginTop: 2 },
+  menuInfo: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  menuSubtitle: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
   quickExpenseForm: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
     padding: 16,
-    marginTop: 8,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  formLabel: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textSecondary,
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: '#E2E6DE',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: radii.md,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#1A1C19',
+    paddingVertical: 12,
+    fontSize: typography.fontSize.md,
+    color: colors.textPrimary,
     marginBottom: 12,
   },
-  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  categoryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
   catChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#ECF0E8',
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceSubtle,
   },
-  catChipActive: { backgroundColor: '#A4F5BA' },
-  catChipText: { fontSize: 12, fontWeight: '500', color: '#717971' },
-  catChipTextActive: { color: '#006B3F', fontWeight: '700' },
+  catChipActive: {
+    backgroundColor: colors.primarySoft,
+  },
+  catChipText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.textSecondary,
+  },
+  catChipTextActive: {
+    color: colors.primary,
+    fontWeight: typography.fontWeight.bold,
+  },
   quickSaveBtn: {
-    backgroundColor: '#DE350B',
-    borderRadius: 12,
+    backgroundColor: colors.expense,
+    borderRadius: radii.md,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  quickSaveBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  section: { marginTop: 24 },
-  sectionTitle: { fontSize: 14, fontWeight: '600', color: '#717971', marginBottom: 12 },
-  themeRow: { flexDirection: 'row', gap: 8 },
+  quickSaveBtnText: {
+    color: colors.textOnPrimary,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+  },
+  section: {
+    marginTop: 24,
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textMuted,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  themeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   themeBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#ECF0E8',
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     gap: 6,
   },
-  themeBtnActive: { backgroundColor: '#006B3F' },
-  themeBtnText: { fontSize: 13, fontWeight: '600', color: '#717971' },
-  themeBtnTextActive: { color: '#fff' },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  statCard: {
-    width: '47%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+  themeBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  statValue: { fontSize: 18, fontWeight: '700', color: '#1A1C19' },
-  statLabel: { fontSize: 12, color: '#717971', marginTop: 4 },
-  aboutCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16 },
-  aboutApp: { fontSize: 18, fontWeight: '700', color: '#006B3F' },
-  aboutVersion: { fontSize: 13, color: '#717971', marginTop: 2 },
-  aboutDesc: { fontSize: 14, color: '#717971', marginTop: 8, lineHeight: 20 },
+  themeBtnText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textSecondary,
+  },
+  themeBtnTextActive: {
+    color: colors.textOnPrimary,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statCard: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  statValue: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  statLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 4,
+  },
+  aboutCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.sm,
+  },
+  aboutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  appIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aboutApp: {
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  aboutVersion: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  aboutDesc: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
 });

@@ -74,7 +74,7 @@ export function computeMonthlyData(transactions: Transaction[]): { month: string
   const monthlyMap: Record<string, { month: string; income: number; expenses: number }> = {};
 
   for (let i = 5; i >= 0; i--) {
-    const month = new Date(now.getFullYear(), now.month - i, 1);
+    const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = getMonthShort(month.getMonth() + 1);
     monthlyMap[key] = { month: key, income: 0, expenses: 0 };
   }
@@ -123,7 +123,7 @@ export function computeBalanceSpots(transactions: Transaction[]): { x: number; y
   const monthlyTotals: number[] = [];
 
   for (let i = 5; i >= 0; i--) {
-    const month = new Date(now.getFullYear(), now.month - i, 1);
+    const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
     let balance = 0;
 
     for (const txn of transactions) {
