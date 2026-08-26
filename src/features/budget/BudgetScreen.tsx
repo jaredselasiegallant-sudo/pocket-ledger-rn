@@ -7,7 +7,7 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { loadBudgetsAsync, addBudgetAsync, deleteBudgetAsync } from './budgetSlice';
 import { loadTransactionsAsync } from '../transactions/transactionsSlice';
 import { formatGhs, formatCompact } from '../../utils/currency';
-import { getDaysLeftInMonth, getCategoryColor } from '../../utils/helpers';
+import { getDaysLeftInMonth, getCategoryColor, filterTransactionsByRange, getBudgetRange } from '../../utils/helpers';
 import { DEFAULT_CATEGORIES } from '../../utils/constants';
 import { BudgetPeriod } from '../../models/types';
 import ProgressBar from '../../components/ProgressBar';
@@ -25,22 +25,13 @@ export default function BudgetScreen() {
   }, [dispatch]);
 
   const now = new Date();
-  const monthlySpending = transactions
-    .filter((t) => t.type === 'debit' && new Date(t.transactionDate).getMonth() === now.getMonth() && new Date(t.transactionDate).getFullYear() === now.getFullYear())
-    .reduce((sum, t) => sum + t.amount, 0);
-
+  const spentFor = (budget: typeof budgets[number]) => filterTransactionsByRange(transactions.filter(t => t.type === 'debit' && t.category === budget.category), { start: new Date(budget.startDate), end: new Date(budget.endDate) }).reduce((sum, t) => sum + t.amount, 0);
+  const monthlySpending = transactions.filter(t => t.type === 'debit' && filterTransactionsByRange([t], getBudgetRange('monthly')).length > 0).reduce((sum, t) => sum + t.amount, 0);
   const totalBudget = budgets.reduce((s, b) => s + b.limitAmount, 0);
-  const totalSpent = budgets.reduce((s, b) => s + b.spentAmount, 0);
+  const totalSpent = budgets.reduce((s, b) => s + spentFor(b), 0);
   const utilization = totalBudget > 0 ? Math.min(totalSpent / totalBudget, 1) : 0;
   const daysLeft = getDaysLeftInMonth();
   const dailyAvg = now.getDate() > 0 ? monthlySpending / now.getDate() : 0;
-
-  const spendingByCategory: Record<string, number> = {};
-  transactions
-    .filter((t) => t.type === 'debit' && new Date(t.transactionDate).getMonth() === now.getMonth())
-    .forEach((t) => {
-      spendingByCategory[t.category] = (spendingByCategory[t.category] || 0) + t.amount;
-    });
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -114,7 +105,7 @@ export default function BudgetScreen() {
           </View>
         ) : (
           budgets.map((budget) => {
-            const spent = spendingByCategory[budget.category] || budget.spentAmount;
+            const spent = spentFor(budget);
             const pct = budget.limitAmount > 0 ? Math.min(spent / budget.limitAmount, 1) : 0;
             const isOver = spent > budget.limitAmount;
             const isNear = pct > 0.8 && !isOver;

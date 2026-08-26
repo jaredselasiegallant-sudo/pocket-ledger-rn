@@ -242,9 +242,9 @@ export default function TransactionListScreen({ navigation }: any) {
               <View style={styles.detailAmountCard}>
                 <Text style={[
                   styles.detailAmount,
-                  { color: selectedTxn.type === 'credit' ? colors.income : colors.expense }
+                  { color: selectedTxn.type === 'credit' ? colors.income : selectedTxn.type === 'transfer' ? colors.info : colors.expense }
                 ]}>
-                  {selectedTxn.type === 'credit' ? '+' : '-'}{formatGhs(selectedTxn.amount)}
+                  {selectedTxn.type === 'credit' ? '+' : selectedTxn.type === 'debit' ? '-' : ''}{formatGhs(selectedTxn.amount)}
                 </Text>
                 <Text style={styles.detailTitle}>{selectedTxn.title}</Text>
               </View>
@@ -264,7 +264,7 @@ export default function TransactionListScreen({ navigation }: any) {
 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Account</Text>
-                  <Text style={styles.detailVal}>{selectedTxn.account || 'Main Wallet'}</Text>
+                  <Text style={styles.detailVal}>{selectedTxn.type === 'transfer' ? `${selectedTxn.fromAccount || 'Unknown'} → ${selectedTxn.toAccount || 'Unknown'}` : selectedTxn.account || 'Unassigned'}</Text>
                 </View>
 
                 <View style={styles.detailRow}>

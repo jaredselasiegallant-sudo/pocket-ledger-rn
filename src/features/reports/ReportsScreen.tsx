@@ -4,7 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { loadTransactionsAsync } from '../transactions/transactionsSlice';
 import { formatGhs, formatCompact } from '../../utils/currency';
-import { computeMonthlyData, computeTopMerchants, computeBalanceSpots, getCategoryColor } from '../../utils/helpers';
+import { computeMonthlyData, computeTopMerchants, getCategoryColor, filterTransactionsByRange, getRangeForLabel } from '../../utils/helpers';
 import ProgressBar from '../../components/ProgressBar';
 import { colors, typography, shadows, radii } from '../../theme';
 
@@ -12,12 +12,14 @@ const PERIODS = ['This Week', 'This Month', 'This Year'];
 
 export default function ReportsScreen() {
   const dispatch = useAppDispatch();
-  const transactions = useAppSelector((s) => s.transactions.items);
+  const allTransactions = useAppSelector((s) => s.transactions.items);
   const [selectedPeriod, setSelectedPeriod] = useState('This Month');
 
   useEffect(() => {
     dispatch(loadTransactionsAsync());
   }, [dispatch]);
+
+  const transactions = filterTransactionsByRange(allTransactions, getRangeForLabel(selectedPeriod));
 
   const totalIncome = transactions
     .filter((t) => t.type === 'credit')
@@ -42,7 +44,6 @@ export default function ReportsScreen() {
 
   const monthlyData = computeMonthlyData(transactions);
   const topMerchants = computeTopMerchants(transactions);
-  const balanceSpots = computeBalanceSpots(transactions);
 
   return (
     <View style={styles.container}>

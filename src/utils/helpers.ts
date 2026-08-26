@@ -1,165 +1,62 @@
-import { Transaction } from '../models/types';
+import { BudgetPeriod, Transaction } from '../models/types';
 
 export function getDateLabel(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
+  const date = new Date(dateStr); const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const txnDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  if (txnDay.getTime() === today.getTime()) return 'Today';
-
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (txnDay.getTime() === yesterday.getTime()) return 'Yesterday';
-
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  if (day.getTime() === today.getTime()) return 'Today';
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  if (day.getTime() === yesterday.getTime()) return 'Yesterday';
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
 }
 
 export function getMonthShort(month: number): string {
-  const months = [
-    '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-  return months[month] || '';
+  return ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month] || '';
 }
-
 export function getMonthName(month: number): string {
-  const months = [
-    '', 'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ];
-  return months[month] || '';
+  return ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][month] || '';
 }
+export function getDaysInMonth(year: number, month: number) { return new Date(year, month + 1, 0).getDate(); }
+export function getDaysLeftInMonth() { const now = new Date(); return getDaysInMonth(now.getFullYear(), now.getMonth()) - now.getDate(); }
+export function isSameDay(a: Date, b: Date) { return a.toDateString() === b.toDateString(); }
 
-export function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
+export function getRangeForLabel(label: string, now = new Date()): { start: Date; end: Date } {
+  const end = new Date(now); end.setHours(23, 59, 59, 999);
+  const start = new Date(now); start.setHours(0, 0, 0, 0);
+  if (label === 'This Week') { const day = start.getDay() || 7; start.setDate(start.getDate() - day + 1); }
+  else if (label === 'This Year') { start.setMonth(0, 1); }
+  else { start.setDate(1); }
+  return { start, end };
 }
-
-export function getDaysLeftInMonth(): number {
-  const now = new Date();
-  const daysInMonth = getDaysInMonth(now.getFullYear(), now.getMonth());
-  return daysInMonth - now.getDate();
+export function getBudgetRange(period: BudgetPeriod, now = new Date()) {
+  const start = new Date(now); start.setHours(0, 0, 0, 0);
+  const end = new Date(now); end.setHours(23, 59, 59, 999);
+  if (period === 'weekly') { const day = start.getDay() || 7; start.setDate(start.getDate() - day + 1); end.setDate(start.getDate() + 6); }
+  else if (period === 'yearly') { start.setMonth(0, 1); end.setMonth(11, 31); }
+  else { start.setDate(1); end.setMonth(end.getMonth() + 1, 0); }
+  return { start, end };
 }
-
-export function isSameDay(d1: Date, d2: Date): boolean {
-  return (
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate()
-  );
+export function filterTransactionsByRange(items: Transaction[], range: { start: Date; end: Date }) {
+  return items.filter(t => { const d = new Date(t.transactionDate); return d >= range.start && d <= range.end; });
 }
+export function isThisWeek(d: string) { return filterTransactionsByRange([{ transactionDate: d } as Transaction], getRangeForLabel('This Week')).length > 0; }
+export function isThisMonth(d: string) { return filterTransactionsByRange([{ transactionDate: d } as Transaction], getRangeForLabel('This Month')).length > 0; }
+export function isThisYear(d: string) { return filterTransactionsByRange([{ transactionDate: d } as Transaction], getRangeForLabel('This Year')).length > 0; }
 
-export function isThisWeek(dateStr: string): boolean {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(today);
-  weekStart.setDate(weekStart.getDate() - (weekStart.getDay() === 0 ? 6 : weekStart.getDay() - 1));
-  return date >= weekStart;
+export function computeMonthlyData(items: Transaction[]): { month: string; income: number; expenses: number }[] {
+  const now = new Date(); const result: Record<string, { month: string; income: number; expenses: number }> = {};
+  for (let i = 5; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); const key = `${d.getFullYear()}-${d.getMonth()}`; result[key] = { month: getMonthShort(d.getMonth() + 1), income: 0, expenses: 0 }; }
+  items.forEach(t => { const d = new Date(t.transactionDate); const key = `${d.getFullYear()}-${d.getMonth()}`; if (!result[key]) return; if (t.type === 'credit') result[key].income += t.amount; else if (t.type === 'debit') result[key].expenses += t.amount; });
+  return Object.values(result);
 }
-
-export function isThisMonth(dateStr: string): boolean {
-  const date = new Date(dateStr);
-  const now = new Date();
-  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+export function computeTopMerchants(items: Transaction[]) {
+  const map: Record<string, { name: string; category: string; amount: number; txnCount: number }> = {};
+  items.filter(t => t.type === 'debit').forEach(t => { const name = t.vendor || t.title || 'Unknown'; map[name] = map[name] ? { ...map[name], amount: map[name].amount + t.amount, txnCount: map[name].txnCount + 1 } : { name, category: t.category || 'Other', amount: t.amount, txnCount: 1 }; });
+  return Object.values(map).sort((a, b) => b.amount - a.amount).slice(0, 5);
 }
-
-export function isThisYear(dateStr: string): boolean {
-  const date = new Date(dateStr);
-  return date.getFullYear() === new Date().getFullYear();
+export function computeBalanceSpots(items: Transaction[]) {
+  const now = new Date(); const totals: number[] = [];
+  for (let i = 5; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); totals.push(items.filter(t => { const x = new Date(t.transactionDate); return x.getFullYear() === d.getFullYear() && x.getMonth() === d.getMonth(); }).reduce((s, t) => s + (t.type === 'credit' ? t.amount : t.type === 'debit' ? -t.amount : 0), 0)); }
+  let cumulative = 0; return totals.map((v, i) => ({ x: i, y: (cumulative += v) }));
 }
-
-export function computeMonthlyData(transactions: Transaction[]): { month: string; income: number; expenses: number }[] {
-  const now = new Date();
-  const monthlyMap: Record<string, { month: string; income: number; expenses: number }> = {};
-
-  for (let i = 5; i >= 0; i--) {
-    const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = getMonthShort(month.getMonth() + 1);
-    monthlyMap[key] = { month: key, income: 0, expenses: 0 };
-  }
-
-  for (const txn of transactions) {
-    const date = new Date(txn.transactionDate);
-    const key = getMonthShort(date.getMonth() + 1);
-    if (!monthlyMap[key]) continue;
-
-    if (txn.type === 'credit') {
-      monthlyMap[key].income += txn.amount;
-    } else {
-      monthlyMap[key].expenses += txn.amount;
-    }
-  }
-
-  return Object.values(monthlyMap);
-}
-
-export function computeTopMerchants(transactions: Transaction[]): { name: string; category: string; amount: number; txnCount: number }[] {
-  const merchantMap: Record<string, { name: string; category: string; amount: number; txnCount: number }> = {};
-
-  for (const txn of transactions) {
-    if (txn.type === 'credit') continue;
-    const name = txn.vendor || txn.account || 'Unknown';
-    if (merchantMap[name]) {
-      merchantMap[name].amount += txn.amount;
-      merchantMap[name].txnCount += 1;
-    } else {
-      merchantMap[name] = {
-        name,
-        category: txn.category || 'Other',
-        amount: txn.amount,
-        txnCount: 1,
-      };
-    }
-  }
-
-  return Object.values(merchantMap)
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 5);
-}
-
-export function computeBalanceSpots(transactions: Transaction[]): { x: number; y: number }[] {
-  const now = new Date();
-  const monthlyTotals: number[] = [];
-
-  for (let i = 5; i >= 0; i--) {
-    const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    let balance = 0;
-
-    for (const txn of transactions) {
-      const date = new Date(txn.transactionDate);
-      if (date.getFullYear() === month.getFullYear() && date.getMonth() === month.getMonth()) {
-        balance += txn.type === 'credit' ? txn.amount : -txn.amount;
-      }
-    }
-
-    monthlyTotals.push(balance);
-  }
-
-  let cumulative = 0;
-  return monthlyTotals.map((val, i) => {
-    cumulative += val;
-    return { x: i, y: cumulative };
-  });
-}
-
-export function getCategoryColor(category: string): string {
-  const colors: Record<string, string> = {
-    'Food & Dining': '#FF6D00',
-    Transport: '#2962FF',
-    Utilities: '#00BFA5',
-    Health: '#D50000',
-    Education: '#AA00FF',
-    Entertainment: '#FF1744',
-    Shopping: '#E91E63',
-    Savings: '#00C853',
-    Investment: '#6200EA',
-    Salary: '#00B0FF',
-    Business: '#FFD600',
-    Gifts: '#FF4081',
-    Rent: '#795548',
-    Communication: '#00BCD4',
-    Other: '#9E9E9E',
-  };
-  return colors[category] || '#9E9E9E';
-}
+export function getCategoryColor(category: string) { return ({ 'Food & Dining': '#FF7A59', Transport: '#3B82F6', Utilities: '#14B8A6', Health: '#EF4444', Education: '#8B5CF6', Entertainment: '#EC4899', Shopping: '#F43F5E', Savings: '#10B981', Investment: '#6366F1', Salary: '#06B6D4', Business: '#F59E0B', Gifts: '#E879F9', Rent: '#A16207', Communication: '#0891B2', Other: '#94A3B8' } as Record<string, string>)[category] || '#94A3B8'; }

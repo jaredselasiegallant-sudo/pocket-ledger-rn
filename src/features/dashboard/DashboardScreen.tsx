@@ -1,264 +1,36 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { loadTransactionsAsync } from '../transactions/transactionsSlice';
 import { loadAccountsAsync } from './accountsSlice';
 import { loadBudgetsAsync } from '../budget/budgetSlice';
-import HeaderCard from '../../components/HeaderCard';
-import QuickActionButton from '../../components/QuickActionButton';
-import TransactionTile from '../../components/TransactionTile';
-import { colors, typography, shadows, radii } from '../../theme';
+import { formatGhs } from '../../utils/currency';
+import { colors, shadows } from '../../theme';
 
 export default function DashboardScreen({ navigation }: any) {
   const dispatch = useAppDispatch();
-  const transactions = useAppSelector((s) => s.transactions.items);
-  const accounts = useAppSelector((s) => s.accounts.items);
-
-  useEffect(() => {
-    dispatch(loadTransactionsAsync());
-    dispatch(loadAccountsAsync());
-    dispatch(loadBudgetsAsync());
-  }, [dispatch]);
-
-  const totalBalance = accounts
-    .filter((a) => a.isActive && a.includeInTotal)
-    .reduce((sum, a) => sum + a.balance, 0);
-
-  const now = new Date();
-  const monthlyTxns = transactions.filter((t) => {
-    const d = new Date(t.transactionDate);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
-
-  const income = monthlyTxns
-    .filter((t) => t.type === 'credit')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const expenses = monthlyTxns
-    .filter((t) => t.type === 'debit')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const recentTxns = transactions.slice(0, 10);
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      
-      {/* Top Header Title */}
-      <View style={styles.topBar}>
-        <View>
-          <Text style={styles.greetingText}>Akwaaba 👋</Text>
-          <Text style={styles.appTitle}>Pocket Ledger</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.notificationBtn}
-          onPress={() => navigation.navigate('Settings')}
-        >
-          <Icon name="cog-outline" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Total Balance Card */}
-        <HeaderCard
-          totalBalance={totalBalance}
-          income={income}
-          expenses={expenses}
-        />
-
-        {/* Quick Actions */}
-        <View style={styles.quickActionsCard}>
-          <QuickActionButton
-            icon="arrow-top-right"
-            label="Send"
-            badgeColor={colors.expenseSoft}
-            iconColor={colors.expense}
-            onPress={() => navigation.navigate('AddTransaction', { initialType: 'debit' })}
-          />
-          <QuickActionButton
-            icon="arrow-bottom-left"
-            label="Receive"
-            badgeColor={colors.incomeSoft}
-            iconColor={colors.income}
-            onPress={() => navigation.navigate('AddTransaction', { initialType: 'credit' })}
-          />
-          <QuickActionButton
-            icon="swap-horizontal"
-            label="Transfer"
-            badgeColor={colors.infoSoft}
-            iconColor={colors.info}
-            onPress={() => navigation.navigate('AddTransaction', { initialType: 'transfer' })}
-          />
-          <QuickActionButton
-            icon="file-document-outline"
-            label="Pay Bill"
-            badgeColor={colors.warningSoft}
-            iconColor={colors.warning}
-            onPress={() => navigation.navigate('AddTransaction', { initialType: 'debit', initialCategory: 'Utilities' })}
-          />
-        </View>
-
-        {/* Recent Transactions Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          {transactions.length > 0 && (
-            <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {recentTxns.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconBg}>
-              <Icon name="receipt-outline" size={32} color={colors.textMuted} />
-            </View>
-            <Text style={styles.emptyTitle}>No transactions recorded</Text>
-            <Text style={styles.emptySubtitle}>Tap the button below to add your first entry</Text>
-          </View>
-        ) : (
-          recentTxns.map((txn) => (
-            <TransactionTile
-              key={txn.id}
-              transaction={txn}
-              onPress={() => navigation.navigate('Transactions')}
-            />
-          ))
-        )}
-
-        <View style={{ height: 90 }} />
-      </ScrollView>
-
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('AddTransaction')}
-      >
-        <Icon name="plus" size={20} color={colors.textOnPrimary} />
-        <Text style={styles.fabText}>Add Transaction</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const transactions = useAppSelector(s => s.transactions.items);
+  const accounts = useAppSelector(s => s.accounts.items);
+  useEffect(() => { dispatch(loadTransactionsAsync()); dispatch(loadAccountsAsync()); dispatch(loadBudgetsAsync()); }, [dispatch]);
+  const month = useMemo(() => { const n = new Date(); return transactions.filter(t => { const d = new Date(t.transactionDate); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); }); }, [transactions]);
+  const income = month.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0);
+  const expenses = month.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0);
+  const balance = accounts.filter(a => a.isActive && a.includeInTotal).reduce((s, a) => s + a.balance, 0);
+  const initials = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
+  return <View style={styles.container}>
+    <StatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <View style={styles.header}><View><Text style={styles.eyebrow}>{initials}</Text><Text style={styles.title}>Your money, clearly.</Text></View><TouchableOpacity style={styles.settings} onPress={() => navigation.navigate('Settings')}><Icon name="cog-outline" size={22} color={colors.textOnPrimary} /></TouchableOpacity></View>
+      <View style={styles.hero}><View style={styles.heroTop}><Text style={styles.heroLabel}>TOTAL BALANCE</Text><Icon name="eye-outline" size={20} color={colors.textOnPrimaryMuted} /></View><Text style={styles.balance}>{formatGhs(balance)}</Text><Text style={styles.heroHint}>Across {accounts.filter(a => a.isActive).length} active accounts</Text><View style={styles.heroStats}><View><Text style={styles.statLabel}>This month in</Text><Text style={styles.statValue}>{formatGhs(income)}</Text></View><View style={styles.statDivider} /><View><Text style={styles.statLabel}>This month out</Text><Text style={styles.statValue}>{formatGhs(expenses)}</Text></View></View></View>
+      <View style={styles.actions}><Action icon="arrow-top-right" label="Spend" tone={colors.expense} onPress={() => navigation.navigate('AddTransaction', { initialType: 'debit' })} /><Action icon="arrow-bottom-left" label="Income" tone={colors.income} onPress={() => navigation.navigate('AddTransaction', { initialType: 'credit' })} /><Action icon="swap-horizontal" label="Move" tone={colors.info} onPress={() => navigation.navigate('AddTransaction', { initialType: 'transfer' })} /><Action icon="chart-box-outline" label="Insights" tone={colors.warning} onPress={() => navigation.navigate('Reports')} /></View>
+      <View style={styles.sectionRow}><Text style={styles.sectionTitle}>Your accounts</Text><TouchableOpacity onPress={() => navigation.navigate('Settings')}><Text style={styles.link}>Manage</Text></TouchableOpacity></View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.accountsRow}>{accounts.filter(a => a.isActive).map(a => <View key={a.id} style={styles.accountCard}><View style={styles.accountIcon}><Icon name={a.type === 'bank' ? 'bank' : a.type === 'cash' ? 'cash' : 'cellphone'} size={19} color={colors.primary} /></View><Text style={styles.accountName} numberOfLines={1}>{a.name}</Text><Text style={styles.accountBalance}>{formatGhs(a.balance)}</Text></View>)}</ScrollView>
+      <View style={styles.sectionRow}><Text style={styles.sectionTitle}>Recent activity</Text>{transactions.length > 0 && <TouchableOpacity onPress={() => navigation.navigate('Transactions')}><Text style={styles.link}>See all</Text></TouchableOpacity>}</View>
+      {transactions.length === 0 ? <View style={styles.empty}><Icon name="sparkles" size={26} color={colors.primary} /><Text style={styles.emptyTitle}>Start your ledger</Text><Text style={styles.emptyText}>Add your first transaction to see your financial picture here.</Text><TouchableOpacity style={styles.emptyButton} onPress={() => navigation.navigate('AddTransaction')}><Text style={styles.emptyButtonText}>Add transaction</Text></TouchableOpacity></View> : transactions.slice(0, 6).map(t => <TouchableOpacity key={t.id} style={styles.transaction} onPress={() => navigation.navigate('Transactions')}><View style={[styles.txIcon, { backgroundColor: t.type === 'credit' ? colors.incomeSoft : t.type === 'transfer' ? colors.infoSoft : colors.expenseSoft }]}><Icon name={t.type === 'credit' ? 'arrow-bottom-left' : t.type === 'transfer' ? 'swap-horizontal' : 'arrow-top-right'} size={18} color={t.type === 'credit' ? colors.income : t.type === 'transfer' ? colors.info : colors.expense} /></View><View style={styles.txInfo}><Text style={styles.txTitle} numberOfLines={1}>{t.title}</Text><Text style={styles.txMeta}>{t.type === 'transfer' ? `${t.fromAccount} → ${t.toAccount}` : `${t.category} · ${t.account || 'Unassigned'}`}</Text></View><Text style={[styles.txAmount, { color: t.type === 'credit' ? colors.income : t.type === 'transfer' ? colors.info : colors.textPrimary }]}>{t.type === 'credit' ? '+' : t.type === 'debit' ? '-' : ''}{formatGhs(t.amount)}</Text></TouchableOpacity>)}
+      <View style={{ height: 90 }} />
+    </ScrollView><TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddTransaction')}><Icon name="plus" size={22} color={colors.textOnPrimary} /><Text style={styles.fabText}>Add entry</Text></TouchableOpacity>
+  </View>;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 12,
-  },
-  greetingText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  appTitle: {
-    fontSize: typography.fontSize.xxl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  notificationBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  scrollContent: {
-    paddingTop: 8,
-  },
-  quickActionsCard: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 16,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadows.sm,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  seeAll: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.primary,
-  },
-  emptyState: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    marginHorizontal: 16,
-    borderRadius: radii.xl,
-    paddingVertical: 36,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  emptyIconBg: {
-    width: 60,
-    height: 60,
-    borderRadius: radii.full,
-    backgroundColor: colors.surfaceSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  emptyTitle: {
-    fontSize: typography.fontSize.md,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  emptySubtitle: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textMuted,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: radii.full,
-    ...shadows.lg,
-  },
-  fabText: {
-    color: colors.textOnPrimary,
-    fontSize: typography.fontSize.md,
-    fontWeight: typography.fontWeight.bold,
-  },
-});
+function Action({ icon, label, tone, onPress }: { icon: string; label: string; tone: string; onPress: () => void }) { return <TouchableOpacity style={styles.action} onPress={onPress}><View style={[styles.actionIcon, { backgroundColor: tone + '18' }]}><Icon name={icon} size={21} color={tone} /></View><Text style={styles.actionLabel}>{label}</Text></TouchableOpacity>; }
+const styles = StyleSheet.create({ container: { flex: 1, backgroundColor: colors.background }, content: { paddingBottom: 30 }, header: { backgroundColor: colors.primaryDark, paddingHorizontal: 20, paddingTop: 52, paddingBottom: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, eyebrow: { color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }, title: { color: colors.textOnPrimary, fontSize: 25, fontWeight: '800', marginTop: 4 }, settings: { width: 42, height: 42, borderRadius: 15, backgroundColor: colors.glassHighlight, alignItems: 'center', justifyContent: 'center' }, hero: { margin: 16, marginTop: -2, padding: 20, borderRadius: 24, backgroundColor: colors.primary, ...shadows.lg }, heroTop: { flexDirection: 'row', justifyContent: 'space-between' }, heroLabel: { color: colors.textOnPrimaryMuted, fontSize: 11, fontWeight: '800', letterSpacing: 1 }, balance: { color: colors.textOnPrimary, fontSize: 36, fontWeight: '800', marginTop: 10 }, heroHint: { color: colors.textOnPrimaryMuted, fontSize: 12, marginTop: 3 }, heroStats: { flexDirection: 'row', marginTop: 22, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.glassHighlight }, statLabel: { color: colors.textOnPrimaryMuted, fontSize: 11 }, statValue: { color: colors.textOnPrimary, fontSize: 15, fontWeight: '700', marginTop: 4 }, statDivider: { width: 1, backgroundColor: colors.glassHighlight, marginHorizontal: 28 }, actions: { flexDirection: 'row', justifyContent: 'space-around', marginHorizontal: 16, paddingVertical: 8 }, action: { alignItems: 'center', width: 70 }, actionIcon: { width: 48, height: 48, borderRadius: 17, alignItems: 'center', justifyContent: 'center' }, actionLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: '700', marginTop: 7 }, sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginTop: 22, marginBottom: 12 }, sectionTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '800' }, link: { color: colors.primary, fontSize: 13, fontWeight: '700' }, accountsRow: { paddingHorizontal: 16, gap: 10 }, accountCard: { width: 146, padding: 14, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }, accountIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 11 }, accountName: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' }, accountBalance: { color: colors.textPrimary, fontSize: 16, fontWeight: '800', marginTop: 5 }, transaction: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 8, padding: 14, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }, txIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, txInfo: { flex: 1, marginHorizontal: 12 }, txTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' }, txMeta: { color: colors.textMuted, fontSize: 11, marginTop: 4 }, txAmount: { fontSize: 13, fontWeight: '800' }, empty: { marginHorizontal: 16, padding: 24, alignItems: 'center', borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.cardBorder }, emptyTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '800', marginTop: 10 }, emptyText: { color: colors.textMuted, textAlign: 'center', lineHeight: 19, marginTop: 5 }, emptyButton: { marginTop: 16, backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 11 }, emptyButtonText: { color: colors.textOnPrimary, fontWeight: '800' }, fab: { position: 'absolute', right: 18, bottom: 18, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 14, ...shadows.lg }, fabText: { color: colors.textOnPrimary, fontWeight: '800' } });

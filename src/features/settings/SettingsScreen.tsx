@@ -4,6 +4,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addTransactionAsync, loadTransactionsAsync } from '../transactions/transactionsSlice';
 import { loadBudgetsAsync } from '../budget/budgetSlice';
+import { loadAccountsAsync, resetAccounts } from '../dashboard/accountsSlice';
+import { resetPreferences } from '../../app/appSlice';
 import { setThemeMode } from '../../app/appSlice';
 import { ThemeMode } from '../../models/types';
 import { formatGhs } from '../../utils/currency';
@@ -171,8 +173,11 @@ export default function SettingsScreen() {
                     try {
                       const storage = new (require('react-native-mmkv').MMKV)();
                       storage.clearAll();
+                      dispatch(resetAccounts());
+                      dispatch(resetPreferences());
                       dispatch(loadTransactionsAsync());
                       dispatch(loadBudgetsAsync());
+                      dispatch(loadAccountsAsync());
                       Alert.alert('Reset Complete', 'Local storage has been reset');
                     } catch {
                       Alert.alert('Error', 'Failed to clear storage');

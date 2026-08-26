@@ -28,6 +28,8 @@ export default function AddTransactionScreen({ navigation, route }: any) {
   const [notes, setNotes] = useState('');
   const [category, setCategory] = useState(route?.params?.initialCategory || 'Food & Dining');
   const [account, setAccount] = useState('MTN MoMo');
+  const [fromAccount, setFromAccount] = useState('MTN MoMo');
+  const [toAccount, setToAccount] = useState('Cash Wallet');
   const [isSaving, setIsSaving] = useState(false);
 
   const accountNames = accounts.filter((a) => a.isActive).map((a) => a.name);
@@ -56,7 +58,9 @@ export default function AddTransactionScreen({ navigation, route }: any) {
           amount: parsedAmount,
           type: selectedType.value,
           category,
-          account,
+          account: selectedType.value === 'transfer' ? undefined : account,
+          fromAccount: selectedType.value === 'transfer' ? fromAccount : undefined,
+          toAccount: selectedType.value === 'transfer' ? toAccount : undefined,
           transactionDate: new Date().toISOString(),
         })
       ).unwrap();
@@ -141,23 +145,19 @@ export default function AddTransactionScreen({ navigation, route }: any) {
         ))}
       </View>
 
-      {/* Account */}
-      <Text style={styles.label}>Payment Account</Text>
-      <View style={styles.accountRow}>
-        {accountNames.map((name) => (
-          <TouchableOpacity
-            key={name}
-            style={[styles.accountChip, account === name && styles.accountChipActive]}
-            onPress={() => setAccount(name)}
-          >
-            <Text
-              style={[styles.accountChipText, account === name && styles.accountChipTextActive]}
-            >
-              {name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {selectedType.value === 'transfer' ? (
+        <>
+          <Text style={styles.label}>From account</Text>
+          <View style={styles.accountRow}>{accountNames.map((name) => <TouchableOpacity key={`from-${name}`} style={[styles.accountChip, fromAccount === name && styles.accountChipActive]} onPress={() => setFromAccount(name)}><Text style={[styles.accountChipText, fromAccount === name && styles.accountChipTextActive]}>{name}</Text></TouchableOpacity>)}</View>
+          <Text style={styles.label}>To account</Text>
+          <View style={styles.accountRow}>{accountNames.map((name) => <TouchableOpacity key={`to-${name}`} style={[styles.accountChip, toAccount === name && styles.accountChipActive]} onPress={() => setToAccount(name)}><Text style={[styles.accountChipText, toAccount === name && styles.accountChipTextActive]}>{name}</Text></TouchableOpacity>)}</View>
+        </>
+      ) : (
+        <>
+          <Text style={styles.label}>Payment Account</Text>
+          <View style={styles.accountRow}>{accountNames.map((name) => <TouchableOpacity key={name} style={[styles.accountChip, account === name && styles.accountChipActive]} onPress={() => setAccount(name)}><Text style={[styles.accountChipText, account === name && styles.accountChipTextActive]}>{name}</Text></TouchableOpacity>)}</View>
+        </>
+      )}
 
       {/* Notes */}
       <Text style={styles.label}>Additional Notes (Optional)</Text>

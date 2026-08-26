@@ -1,6 +1,6 @@
-export type TransactionType = 'credit' | 'debit' | 'transfer';
 export type AccountType = 'mobile_money' | 'bank' | 'cash' | 'investment';
 export type BudgetPeriod = 'weekly' | 'monthly' | 'yearly';
+export type TransactionType = 'debit' | 'credit' | 'transfer';
 
 export interface Transaction {
   id: number;
@@ -15,6 +15,8 @@ export interface Transaction {
   reference: string | null;
   provider: string | null;
   account: string | null;
+  fromAccount: string | null;
+  toAccount: string | null;
   isAutoCaptured: boolean;
   isRecurring: boolean;
   recurringFrequency: string | null;
@@ -34,6 +36,8 @@ export interface TransactionInput {
   reference?: string;
   provider?: string;
   account?: string;
+  fromAccount?: string;
+  toAccount?: string;
   transactionDate?: string;
   isRecurring?: boolean;
 }
@@ -97,21 +101,6 @@ export interface Category {
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';
-
-export interface CategoryData {
-  name: string;
-  total: number;
-}
-
-export interface MonthlyData {
-  month: string;
-  income: number;
-  expenses: number;
-}
-
-export interface MerchantData {
-  name: string;
-  category: string;
-  amount: number;
-  txnCount: number;
-}
+export interface CategoryData { name: string; total: number; }
+export interface MonthlyData { month: string; income: number; expenses: number; }
+export interface MerchantData { name: string; category: string; amount: number; txnCount: number; }
