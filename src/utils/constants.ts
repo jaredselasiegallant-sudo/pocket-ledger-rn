@@ -1,5 +1,5 @@
 export const APP_NAME = 'PocketLedger';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.1.0';
 
 export const DEFAULT_CURRENCY_CODE = 'GHS';
 export const DEFAULT_CURRENCY_SYMBOL = 'GH\u00A2';
