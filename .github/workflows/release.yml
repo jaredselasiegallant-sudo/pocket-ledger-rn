@@ -52,6 +52,9 @@ jobs:
             cp -r android/app/src/main/java/com/tempscaffold/* android/app/src/main/java/com/pocketledger/
             rm -rf android/app/src/main/java/com/tempscaffold
           fi
+          # Overlay custom native modules (notification listener)
+          cp app-native/java/com/pocketledger/*.kt android/app/src/main/java/com/pocketledger/
+          cp app-native/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           rm -rf TempScaffold
 
       - run: npm install
@@ -111,6 +114,7 @@ jobs:
             - Budget tracking with category progress bars
             - Reports with charts
             - Quick Expense for rapid entry
+            - **Auto-detect MTN MoMo & Telecel Cash alerts** via notification listener
             - Dark mode support
             - Offline-first — all data on device via MMKV
 

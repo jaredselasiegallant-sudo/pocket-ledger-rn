@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert, StatusBar } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
@@ -11,6 +11,7 @@ import { ThemeMode } from '../../models/types';
 import { formatGhs } from '../../utils/currency';
 import { DEFAULT_CATEGORIES } from '../../utils/constants';
 import { colors, typography, shadows, radii } from '../../theme';
+import { notificationImporter } from '../../services/notificationImporter';
 
 export default function SettingsScreen() {
   const dispatch = useAppDispatch();
@@ -20,6 +21,8 @@ export default function SettingsScreen() {
   const [showQuickExpense, setShowQuickExpense] = useState(false);
   const [quickAmount, setQuickAmount] = useState('');
   const [quickCategory, setQuickCategory] = useState('Food & Dining');
+  const [notificationEnabled, setNotificationEnabled] = useState(false);
+  useEffect(() => { if (notificationImporter.isSupported) notificationImporter.isEnabled().then(setNotificationEnabled); }, []);
 
   const totalTransactions = transactions.length;
   const totalIncome = transactions.filter((t) => t.type === 'credit').reduce((s, t) => s + t.amount, 0);
@@ -128,6 +131,14 @@ export default function SettingsScreen() {
           ))}
         </View>
       </View>
+
+      {notificationImporter.isSupported && <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Automatic detection</Text>
+        <TouchableOpacity style={styles.menuCard} onPress={() => { notificationImporter.openSettings(); setTimeout(() => notificationImporter.isEnabled().then(setNotificationEnabled), 800); }}>
+          <View style={[styles.menuIcon, { backgroundColor: colors.infoSoft }]}><Icon name="bell-check-outline" size={22} color={colors.info} /></View>
+          <View style={styles.menuInfo}><Text style={styles.menuTitle}>Money notifications</Text><Text style={styles.menuSubtitle}>{notificationEnabled ? 'Enabled — detected alerts wait for review' : 'Tap to enable MTN MoMo and Telecel Cash alerts'}</Text></View><Icon name="chevron-right" size={22} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>}
 
       {/* Financial Overview Stats */}
       <View style={styles.section}>
